@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'find_cameras = pilot_gui.find_cameras:main',
         ],
     },
 )
