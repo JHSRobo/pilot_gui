@@ -44,7 +44,6 @@ class Camera_Finder(Node):
         @app.route('/', methods=["POST", "GET"])
         def page():
             incoming_ip = flask.request.remote_addr
-            incoming_form = flask.request.form
 
             # If the IP is new, add it to known_ips and send it out to the camera viewer.
             if incoming_ip not in self.known_ips:# and len(incoming_form) > 0:

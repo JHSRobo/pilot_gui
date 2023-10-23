@@ -19,6 +19,7 @@
   <depend>python3-opencv</depend>
   <depend>sensor_msgs</depend>
   <depend>core</depend>
+  <depend>rcl_interfaces</depend>
 
   <export>
     <build_type>ament_python</build_type>
