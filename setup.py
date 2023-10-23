@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'find_cameras = pilot_gui.find_cameras:main',
+            'switch_cameras = pilot_gui.switch_cameras:main',
         ],
     },
 )

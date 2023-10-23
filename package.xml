@@ -17,6 +17,7 @@
 
   <depend>python3-flask</depend>
   <depend>python3-opencv</depend>
+  <depend>sensor_msgs</depend>
   <depend>core</depend>
 
   <export>
