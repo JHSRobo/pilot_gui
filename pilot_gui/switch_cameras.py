@@ -128,15 +128,20 @@ class Camera_Switcher(Node):
 
             # If a button state has changed...
             if change: 
-                # If there's an active IP mapped to this index...
-                if self.std_camera_config[self.current_camera_index]["ip"] in self.active_cameras:
-                    # If it's not the same IP as the last one we published...
-                    if self.cached_camera_index is not self.current_camera_index:
-                        camera_msg = self.create_camera_msg()
-                        self.camera_pub.publish(camera_msg)
-                else: 
-                    self.log.warn("No active camera mapped to that button")
-        
+                # If there's an entry in the config file for this index...
+                if str(self.current_camera_index) in self.std_camera_config.keys():   
+                    # If there's an active camera with that IP...
+                    if self.std_camera_config[str(self.current_camera_index)]["ip"] in self.active_cameras:
+                        # If it's not the same IP as the last one we published...
+                        if self.cached_camera_index is not self.current_camera_index:
+                            camera_msg = self.create_camera_msg()
+                            self.camera_pub.publish(camera_msg)
+
+                    else: # If there is no active camera with that IP
+                        self.log.warn("This camera is currently disabled")    
+                else: # If there is no entry in the config file for this index:
+                    self.log.warn("No camera mapped to that button")
+            
         self.cached_button_input = [joy.axes[7], joy.axes[6], joy.axes[7], joy.axes[6]]
         self.cached_camera_index = self.current_camera_index
 
@@ -148,7 +153,6 @@ class Camera_Switcher(Node):
         for ip in self.active_cameras:
             master_index = self.get_master_index(ip)
             nickname_list.append(self.master_config[master_index]["nickname"])
-        
         self.log.info('')
         self.log.info("{} camera assigned to index {}".format(nickname, new_index))
         self.log.info("Assigned Camera List: {}".format(self.get_nickname_printout()))
@@ -250,16 +254,16 @@ class Camera_Switcher(Node):
 
 
     # Creates a new entry in the config files for new cameras
-    def create_config_entry(self, ip, gripper="front", ID="unnamed", nickname = "unnamed"):
+    def create_config_entry(self, ip, gripper="front", ID="unnamed", nickname = "Unnamed"):
         std_index = self.find_available_std_index() # Assign a new index
         master_index = self.find_available_master_index()
         
         # Give each unnamed cam a unique identifier
-        if "unnamed" in ID or "unnamed" in nickname:
+        if "unnamed" in ID or "Unnamed" in nickname:
             self.unnamed_cams +=1
         if ID == "unnamed":
             ID += str(self.unnamed_cams)
-        if nickname == "unnamed":
+        if nickname == "Unnamed":
             nickname += str(self.unnamed_cams)
         
         self.std_camera_config[std_index] = { "ip" : ip,
@@ -272,6 +276,7 @@ class Camera_Switcher(Node):
                                       "ID" : ID }
 
         self.write_to_config()
+        self.log.info("")
         self.log.info("Created new camera entry.")
 
 
