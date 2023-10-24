@@ -145,6 +145,7 @@ class Camera_Switcher(Node):
         self.cached_button_input = [joy.axes[7], joy.axes[6], joy.axes[7], joy.axes[6]]
         self.cached_camera_index = self.current_camera_index
 
+
     # Function for logging important information after remapping cameras
     def log_camera_assignment_change(self, nickname, new_index):
         
@@ -186,6 +187,7 @@ class Camera_Switcher(Node):
 
         return camera_msg
 
+
     # Generate a readable version of the current active cameras
     def get_nickname_printout(self):
         printout = {}
@@ -195,6 +197,7 @@ class Camera_Switcher(Node):
             else:
                 printout[index] = " "
         return str(printout)
+
 
     # Read the existing camera config into a dictionary
     # JSON files are read into nested dictionaries.
@@ -207,6 +210,7 @@ class Camera_Switcher(Node):
         with open(self.config_path) as f:
             self.master_config = json.load(f)
 
+
     # Checks if the config file still exists.
     # If it doesn't, it creates a new one.
     def check_config_integrity(self):
@@ -214,6 +218,9 @@ class Camera_Switcher(Node):
             return True
         else:
             empty_dict = {}
+            self.log.info("cam_config.json not found")
+            self.log.info("Creating new camera config")
+            self.log.info("edit pilot_gui/cam_config.json to save your settings")
             with open(self.config_path, "w") as f:
                 json.dump(empty_dict, f)
 
@@ -246,6 +253,7 @@ class Camera_Switcher(Node):
                 return key
         return str(len(self.std_camera_config) + 1)
 
+
     def find_available_master_index(self):
         for key in self.master_config:
             if self.master_config[key] == 0:
@@ -277,7 +285,7 @@ class Camera_Switcher(Node):
 
         self.write_to_config()
         self.log.info("")
-        self.log.info("Created new camera entry.")
+        self.log.info("Created new camera config entry")
 
 
     # Updates the contents of the config file with the contents of self.std_camera_config

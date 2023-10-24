@@ -17,7 +17,13 @@ class Camera_Finder(Node):
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.ERROR)
 
-        self.known_ips = [] # Index of ips that are already recognized and added
+        # Dict of ips that are already recognized and added
+        # Is a dict so that we can store timers in there to monitor connection
+        self.known_ips = {}
+
+        # Number of seconds needed for a camera to timeout
+        self.timeout = 5.0
+        self.clock = self.get_clock()
 
         # Set up the add camera service
         self.camera_adder = self.create_client(AddCamera, 'AddCamera')
@@ -25,12 +31,6 @@ class Camera_Finder(Node):
 
         # Run the app
         self.find_cameras()
-    
-
-    def add_cam(self, new_ip):
-        self.request.ip = str(new_ip)
-        self.future = self.camera_adder.call_async(self.request)
-
 
     def find_cameras(self):
 
@@ -40,19 +40,46 @@ class Camera_Finder(Node):
         # Write the Flask Callback
         # Yes, I know it's gross to define a function within a function.
         # There are cleaner ways to do this, but this is intelligible and works well.
-
         @app.route('/', methods=["POST", "GET"])
         def page():
+
             incoming_ip = flask.request.remote_addr
 
             # If the IP is new, add it to known_ips and send it out to the camera viewer.
-            if incoming_ip not in self.known_ips:# and len(incoming_form) > 0:
-                self.known_ips.append(incoming_ip)
+            if incoming_ip not in self.known_ips.keys():# and len(incoming_form) > 0:
+                self.known_ips[incoming_ip] = None
                 self.add_cam(incoming_ip)
 
+            #self.update_tracker(incoming_ip)
+
             return ""
-        
         app.run(host='0.0.0.0', port=12345)
+    
+
+    def add_cam(self, new_ip):
+        self.request.ip = str(new_ip)
+        self.future = self.camera_adder.call_async(self.request)
+
+
+    # Create a timer that calls disconnected_callback in 3 seconds
+    # This function is called whenever the cameras ping topside, so every second.
+    # This means the clock constantly resets.
+    def update_tracker(self, ip):
+        self.destroy_timer(self.known_ips[ip])
+        self.known_ips[ip] = self.create_timer(self.timeout, self.disconnect_callback(ip))
+        self.log.info(str(self.known_ips[ip]))
+
+
+    def disconnect_callback(self, ip):
+        self.destroy_timer(self.known_ips[ip])
+
+        # Calculate the time of last ping
+        last_ping = self.clock.now() - rclpy.time.Duration(seconds=self.timeout)
+        self.log.warn("Lost connection to {}. Last ping was at {}".format(ip, last_ping))
+
+        self.known_ips.pop(ip)
+
+
 
 
 def main(args=None):

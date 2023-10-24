@@ -1,14 +1,26 @@
 {
   "1": {
-    "ip": "192.168.1.111",
-    "gripper": "front",
-    "nickname": "Unnamed1",
-    "ID": "unnamed1"
-  },
-  "2": {
     "ip": "192.168.1.100",
     "gripper": "front",
-    "nickname": "Unnamed2",
-    "ID": "unnamed2"
+    "nickname": "Laptop",
+    "ID": "laptop_cam"
+  },
+  "2": {
+    "ip": "192.168.1.111",
+    "gripper": "front",
+    "nickname": "RPi",
+    "ID": "rpi_cam"
+  },
+  "3": {
+    "ip": "192.168.1.99",
+    "gripper": "front",
+    "nickname": "Imaginary",
+    "ID": "imaginary_cam"
+  },
+  "4": {
+    "ip": "192.168.1.98",
+    "gripper": "front",
+    "nickname": "Made Up",
+    "ID": "made_up_cam"
   }
 }
