@@ -21,10 +21,6 @@ class Camera_Finder(Node):
         # Is a dict so that we can store timers in there to monitor connection
         self.known_ips = {}
 
-        # Number of seconds needed for a camera to timeout
-        self.timeout = 5.0
-        self.clock = self.get_clock()
-
         # Set up the add camera service
         self.camera_adder = self.create_client(AddCamera, 'AddCamera')
         self.request = AddCamera.Request()
@@ -50,8 +46,6 @@ class Camera_Finder(Node):
                 self.known_ips[incoming_ip] = None
                 self.add_cam(incoming_ip)
 
-            #self.update_tracker(incoming_ip)
-
             return ""
         app.run(host='0.0.0.0', port=12345)
     
@@ -59,27 +53,6 @@ class Camera_Finder(Node):
     def add_cam(self, new_ip):
         self.request.ip = str(new_ip)
         self.future = self.camera_adder.call_async(self.request)
-
-
-    # Create a timer that calls disconnected_callback in 3 seconds
-    # This function is called whenever the cameras ping topside, so every second.
-    # This means the clock constantly resets.
-    def update_tracker(self, ip):
-        self.destroy_timer(self.known_ips[ip])
-        self.known_ips[ip] = self.create_timer(self.timeout, self.disconnect_callback(ip))
-        self.log.info(str(self.known_ips[ip]))
-
-
-    def disconnect_callback(self, ip):
-        self.destroy_timer(self.known_ips[ip])
-
-        # Calculate the time of last ping
-        last_ping = self.clock.now() - rclpy.time.Duration(seconds=self.timeout)
-        self.log.warn("Lost connection to {}. Last ping was at {}".format(ip, last_ping))
-
-        self.known_ips.pop(ip)
-
-
 
 
 def main(args=None):
