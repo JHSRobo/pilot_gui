@@ -33,18 +33,22 @@ class Camera_Viewer(Node):
 
     def display_camera(self):
         if self.vid_capture is None:
-            self.log.info("yee yee")
+            self.log.info("vid_capture is None")
             return
         
         frame = self.read_frame()
         if frame is not None:
+            self.log.info("frame is show")
             cv2.imshow("Camera Feed", frame)
+            cv2.waitKey(1)
+            
+        else: self.log.info("frame is None")
     
     def change_camera_callback(self, cam_msg=Cam):
         try: self.vid_capture.release()
         except: pass
 
-        self.vid_capture = cv2.VideoCapture("http://{}:5000".format(cam_msg.ip))
+        self.vid_capture = cv2.VideoCapture("http://{}:5000/1".format(cam_msg.ip))
     
 
 def main(args=None):

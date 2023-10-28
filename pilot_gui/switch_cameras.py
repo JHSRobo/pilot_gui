@@ -111,34 +111,37 @@ class Camera_Switcher(Node):
             # Minor consequence of this logic is:
             # If multiple buttons are pressed, the furthest clockwise takes priority
             # No big deal tbh. About as reasonable a solution as any.
+            
+            desired_camera_index = False
 
             # Also, this cached input stuff is so that holding the button does not trigger this repeatedly.
             if joy.axes[7] == 1.0 and not self.cached_button_input[0]: # Up button
-                self.current_camera_index = 1
+                desired_camera_index = 1
                 change = True
             if joy.axes[6] == -1.0 and not self.cached_button_input[1]: # Right Button
-                self.current_camera_index = 2
+                desired_camera_index = 2
                 change = True
             if joy.axes[7] == -1.0 and not self.cached_button_input[2]: # Down button
-                self.current_camera_index = 3
+                desired_camera_index = 3
                 change = True
             if joy.axes[6] == 1.0 and not self.cached_button_input[3]: # Left Button
-                self.current_camera_index = 4
+                desired_camera_index = 4
                 change = True
 
             # If a button state has changed...
             if change: 
                 # If there's an entry in the config file for this index...
-                if str(self.current_camera_index) in self.std_camera_config.keys():   
+                if str(desired_camera_index) in self.std_camera_config.keys():   
                     # If there's an active camera with that IP...
-                    if self.std_camera_config[str(self.current_camera_index)]["ip"] in self.active_cameras:
+                    if self.std_camera_config[str(desired_camera_index)]["ip"] in self.active_cameras:
                         # If it's not the same IP as the last one we published...
-                        if self.cached_camera_index is not self.current_camera_index:
+                        if self.cached_camera_index is not desired_camera_index:
+                            self.current_camera_index = desired_camera_index
                             camera_msg = self.create_camera_msg()
                             self.camera_pub.publish(camera_msg)
 
                     else: # If there is no active camera with that IP
-                        self.log.warn("This camera is currently disabled")    
+                        self.log.warn("No camera mapped to that button")    
                 else: # If there is no entry in the config file for this index:
                     self.log.warn("No camera mapped to that button")
             
