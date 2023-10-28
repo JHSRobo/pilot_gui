@@ -5,6 +5,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from rcl_interfaces.msg import ParameterDescriptor, IntegerRange, SetParametersResult
 from core.srv import AddCamera
+from std_srvs.srv import Trigger
 from core.msg import Cam
 
 # NOTE:
@@ -31,7 +32,6 @@ class Camera_Switcher(Node):
         # Filling unused slots with empty dictionaries
         self.active_cameras = []
         self.current_camera_index = 0
-        self.active_camera_count = 0
 
         # Number of unnamed cameras. Used in generating IDs for new cams.
         self.unnamed_cams = 0
@@ -49,7 +49,12 @@ class Camera_Switcher(Node):
         self.check_config_integrity()
         self.open_config() # Creates both Standard and Master Config.
 
+        # Set up a service for accepting new cameras from find_cameras
         self.camera_adder = self.create_service(AddCamera, "AddCamera", self.add_camera_callback)
+
+        # Set up a service for returning the first camera to view_cameras
+        self.first_camera_srv = self.create_service(Trigger, 'FirstCamera', self.first_camera_callback)
+
         self.joy_sub = self.create_subscription(Joy, 'joy', self.change_cam_callback, 10)
         self.camera_pub = self.create_publisher(Cam, "active_camera", 10)
 
@@ -93,11 +98,24 @@ class Camera_Switcher(Node):
             self.create_config_entry(request.ip)
             ip_index = self.get_std_index(request.ip) # Get new index once it's been added to config
 
-        self.active_camera_count += 1
-
         self.active_cameras.append(request.ip)
         self.new_cam_parameter(ip_index)
 
+        return response
+
+    # When view_cameras starts up, it requests for us to publish the currently active camera
+    def first_camera_callback(self, request, response):
+        if len(self.active_cameras) == 0: # If no cams connected, return early
+            response.success = False
+            return response
+        
+        # Get the index of the first camera in active_cameras
+        self.current_camera_index = self.get_master_index(self.active_cameras[0])
+        self.cached_camera_index = self.current_camera_index
+
+        camera_msg = self.create_camera_msg()
+        self.camera_pub.publish(camera_msg)
+        response.success = True
         return response
 
 

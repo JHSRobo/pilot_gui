@@ -18,6 +18,7 @@
   <depend>python3-flask</depend>
   <depend>python3-opencv</depend>
   <depend>sensor_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>core</depend>
   <depend>rcl_interfaces</depend>
 

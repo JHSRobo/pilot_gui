@@ -1,7 +1,9 @@
 import rclpy
 from rclpy.node import Node
 from core.msg import Cam
+from std_srvs.srv import Trigger
 
+import time
 import cv2
 
 class Camera_Viewer(Node):
@@ -16,6 +18,9 @@ class Camera_Viewer(Node):
         # Create subsciber for changing cameras
         self.camera_sub = self.create_subscription(Cam, "active_camera", self.change_camera_callback, 10)
 
+        # Create service for adding the first camera
+        self.first_cam_request = self.create_client(Trigger, "FirstCamera")
+
         # Create window used for displaying camera feed
         cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
@@ -24,25 +29,25 @@ class Camera_Viewer(Node):
         framerate = 1.0 / 50.0
         self.create_timer(framerate, self.display_camera)
 
+    # Grab the most recent frame from the camera feed
     def read_frame(self):
         success, frame = self.vid_capture.read()
         if not success:
-            self.log.info("Could not read frame from camera")
             return None
         else: return frame
 
+
     def display_camera(self):
         if self.vid_capture is None:
-            self.log.info("vid_capture is None")
+            time.sleep(0.1)
+            request = Trigger.Request()
+            self.future = self.first_cam_request.call_async(request)
             return
         
         frame = self.read_frame()
         if frame is not None:
-            self.log.info("frame is show")
             cv2.imshow("Camera Feed", frame)
             cv2.waitKey(1)
-            
-        else: self.log.info("frame is None")
     
     def change_camera_callback(self, cam_msg=Cam):
         try: self.vid_capture.release()

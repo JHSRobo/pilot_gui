@@ -1,15 +1,15 @@
 {
   "1": {
-    "ip": "192.168.1.100",
+    "ip": "192.168.1.86",
     "gripper": "front",
-    "nickname": "Laptop",
-    "ID": "laptop_cam"
+    "nickname": "Unnamed1",
+    "ID": "unnamed1"
   },
   "2": {
-    "ip": "192.168.1.111",
+    "ip": "192.168.1.86",
     "gripper": "front",
-    "nickname": "RPi",
-    "ID": "rpi_cam"
+    "nickname": "Unnamed1",
+    "ID": "unnamed1"
   },
   "3": {
     "ip": "192.168.1.99",
