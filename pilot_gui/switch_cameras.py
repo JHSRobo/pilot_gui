@@ -281,7 +281,7 @@ class Camera_Switcher(Node):
 
 
     # Creates a new entry in the config files for new cameras
-    def create_config_entry(self, ip, gripper="front", ID="unnamed", nickname = "Unnamed"):
+    def create_config_entry(self, ip, gripper="Front", ID="unnamed", nickname = "Unnamed"):
         std_index = self.find_available_std_index() # Assign a new index
         master_index = self.find_available_master_index()
         

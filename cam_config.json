@@ -1,7 +1,7 @@
 {
   "1": {
     "ip": "192.168.1.86",
-    "gripper": "front",
+    "gripper": "Front",
     "nickname": "Test Cam",
     "ID": "test_cam"
   }

@@ -43,6 +43,7 @@ class Camera_Viewer(Node):
         self.thrusters_enabled = False
         self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None }
         self.leak_detected = False
+        self.gripper = None
         
         # Create your HUD editor
         resolution = (1280, 720)
@@ -78,6 +79,7 @@ class Camera_Viewer(Node):
         frame = self.hud.add_camera_details(frame, self.index, self.nickname)
         frame = self.hud.add_thruster_status(frame, self.thrusters_enabled)
         frame = self.hud.add_sensitivity(frame, self.sensitivity)
+        frame = self.hud.add_gripper(frame, self.gripper)
         if self.leak_detected: frame - self.hud.leak_notification(frame)
 
         cv2.imshow("Camera Feed", frame)
@@ -93,6 +95,7 @@ class Camera_Viewer(Node):
         self.vid_capture = cv2.VideoCapture("http://{}:5000/1".format(cam_msg.ip))
         self.nickname = cam_msg.nickname
         self.index = cam_msg.index
+        self.gripper = cam_msg.gripper
 
 
     # Sets the thrusters_enabled variable to match thruster status
