@@ -4,9 +4,9 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from rcl_interfaces.msg import ParameterDescriptor, IntegerRange, SetParametersResult
-from core.srv import AddCamera
 from std_srvs.srv import Trigger
 from core.msg import Cam
+from core.srv import AddCamera
 
 # NOTE:
         # This program has 2 config dictionaries. 
@@ -50,10 +50,10 @@ class Camera_Switcher(Node):
         self.open_config() # Creates both Standard and Master Config.
 
         # Set up a service for accepting new cameras from find_cameras
-        self.camera_adder = self.create_service(AddCamera, "AddCamera", self.add_camera_callback)
+        self.camera_adder = self.create_service(AddCamera, "add_camera", self.add_camera_callback)
 
         # Set up a service for returning the first camera to view_cameras
-        self.first_camera_srv = self.create_service(Trigger, 'FirstCamera', self.first_camera_callback)
+        self.first_camera_srv = self.create_service(Trigger, 'first_camera', self.first_camera_callback)
 
         self.joy_sub = self.create_subscription(Joy, 'joy', self.change_cam_callback, 10)
         self.camera_pub = self.create_publisher(Cam, "active_camera", 10)
@@ -177,7 +177,6 @@ class Camera_Switcher(Node):
         self.log.info('')
         self.log.info("{} camera assigned to index {}".format(nickname, new_index))
         self.log.info("Assigned Camera List: {}".format(self.get_nickname_printout()))
-        self.log.info("Currently Active Cameras: {}".format(str(nickname_list)))
 
 
     # Creates a new parameter for a camera
