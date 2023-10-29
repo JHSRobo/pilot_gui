@@ -43,7 +43,7 @@ class Camera_Switcher(Node):
         self.cached_camera_index = None
 
         # Define config file path
-        self.config_path = os.path.join(os.path.dirname(__file__), "../cam_config.json")
+        self.config_path = "/home/jhsrobo/corews/src/pilot_gui/cam_config.json"
 
         # Opens the JSON config file.
         self.check_config_integrity()
@@ -77,8 +77,7 @@ class Camera_Switcher(Node):
                 nickname = self.master_config[str(master_index)]["nickname"]
 
                 # Update the config and the active cameras list
-                # If there is no camera currently mapped to an index, it defaults to last connected.
-                # This is just because we don't delete old entries.
+                self.delete_camera_entries(nickname)
                 self.std_camera_config[str(new_index)] = self.master_config[str(master_index)]
 
                 self.log_camera_assignment_change(nickname, new_index)
@@ -241,7 +240,7 @@ class Camera_Switcher(Node):
             empty_dict = {}
             self.log.info("cam_config.json not found")
             self.log.info("Creating new camera config")
-            self.log.info("edit pilot_gui/cam_config.json to save your settings")
+            self.log.info("Edit pilot_gui/cam_config.json to save your settings")
             with open(self.config_path, "w") as f:
                 json.dump(empty_dict, f)
 
@@ -324,6 +323,13 @@ class Camera_Switcher(Node):
     # Simple getter to run at shutdown
     def get_save_changes (self):
         return self.get_parameter("save_changes_on_shutdown").value
+    
+
+    def delete_camera_entries(self, nickname):
+        target_index = self.get_std_index(nickname)
+        while target_index is not None:
+            self.std_camera_config.pop(str(target_index))
+            target_index = self.get_std_index(nickname)
 
 
 def main(args=None):
