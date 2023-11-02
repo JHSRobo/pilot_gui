@@ -41,7 +41,7 @@ class Camera_Viewer(Node):
         self.nickname = None
         self.index = 0
         self.thrusters_enabled = False
-        self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None }
+        self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None, "Slow Factor": None}
         self.leak_detected = False
         self.gripper = None
         
@@ -111,6 +111,7 @@ class Camera_Viewer(Node):
         self.sensitivity["Horizontal"] = round(sensitivity_data.horizontal, 2)
         self.sensitivity["Vertical"] = round(sensitivity_data.vertical, 2)
         self.sensitivity["Angular"] = round(sensitivity_data.angular, 2)
+        self.sensitivity["Slow Factor"] = round(sensitivity_data.slow_factor, 2)
 
     # Updates leak detection status
     def leak_detection_callback(self, request, response):
