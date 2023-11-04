@@ -21,6 +21,7 @@
   <depend>std_srvs</depend>
   <depend>core</depend>
   <depend>rcl_interfaces</depend>
+  <depend>cv_bridge</depend>
 
   <export>
     <build_type>ament_python</build_type>

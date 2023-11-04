@@ -3,6 +3,8 @@ from rclpy.node import Node
 from core.msg import Cam, Sensitivity
 from std_srvs.srv import Trigger, SetBool
 from core_lib import camera_overlay
+from sensor_msgs.msg import Image, Joy
+from cv_bridge import CvBridge
 
 import time
 import cv2
@@ -33,6 +35,12 @@ class Camera_Viewer(Node):
         # Create a service for reporting leak detection
         self.leak_detect_srv = self.create_service(SetBool, "leak_detection", self.leak_detection_callback)
 
+        # Create a publisher for publishing the active feed
+        self.image_pub = self.create_publisher(Image, 'camera_feed', 10)
+
+        # Create a joystick subscriber for toggling recording
+        self.joy_sub = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
+
         # Create window used for displaying camera feed
         cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
@@ -44,10 +52,13 @@ class Camera_Viewer(Node):
         self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None, "Slow Factor": None}
         self.leak_detected = False
         self.gripper = None
+
+        self.publish_img = False
         
         # Create your HUD editor
-        resolution = (1280, 720)
+        resolution = (1440, 810)
         self.hud = camera_overlay.HUD(resolution)
+        self.bridge = CvBridge()
 
         # Create Framerate and callback timer
         framerate = 1.0 / 50.0
@@ -75,16 +86,28 @@ class Camera_Viewer(Node):
         if frame is None:
             return
         
+        # Publish our image to camera feed if enabled
+        if self.publish_img:
+            self.broadcast_feed(frame)
+        
         # Add the overlay to the camera feed
         frame = self.hud.add_camera_details(frame, self.index, self.nickname)
         frame = self.hud.add_thruster_status(frame, self.thrusters_enabled)
         frame = self.hud.add_sensitivity(frame, self.sensitivity)
         frame = self.hud.add_gripper(frame, self.gripper)
+        frame = self.hud.add_publish_status(frame, self.publish_img)
         if self.leak_detected: frame - self.hud.leak_notification(frame)
 
         cv2.imshow("Camera Feed", frame)
         cv2.waitKey(1)
     
+
+    # Publish our current camera feed frame to ROS topic
+    def broadcast_feed(self, frame):
+        img = Image()
+        img = self.bridge.cv2_to_imgmsg(frame, encoding="passthrough")
+        self.image_pub.publish(img)
+
 
     # Switches the captured video feed whenever we change cameras.
     # Also updates with most recent camera data.
@@ -118,6 +141,18 @@ class Camera_Viewer(Node):
         self.leak_detected = request.data
         response.success = True
         return response
+
+
+    # Checks to see if we are broadcasting to topic or not
+    def joy_callback(self, joy):
+
+        # Enable or disable thrusters based on button press
+        if joy.buttons[2] and not self.cached_input:
+            self.publish_img = not self.publish_img
+            if self.publish_img: self.log.info("Starting to publish camera feed")
+            else: self.log.info("No longer publishing camera feed")
+
+        self.cached_input = joy.buttons[2]
     
 
 def main(args=None):
