@@ -25,7 +25,7 @@ class Camera_Switcher(Node):
         super().__init__('camera_switcher')
 
         self.max_cameras = 8 # This is not a hard limit. Can change.
-        
+
         self.log = self.get_logger() # Quick reference for ROS logging
 
         # Stores IPs of active cameras
