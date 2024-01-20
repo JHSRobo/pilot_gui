@@ -16,7 +16,6 @@
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <depend>python3-flask</depend>
-  <depend>python-flask</depend>
   <depend>python3-opencv</depend>
   <depend>sensor_msgs</depend>
   <depend>std_srvs</depend>

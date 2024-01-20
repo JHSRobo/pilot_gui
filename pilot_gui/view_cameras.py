@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from core.msg import Cam, Sensitivity
+from std_msgs.msg import Float32
 from std_srvs.srv import Trigger, SetBool
 from core_lib import camera_overlay
 from sensor_msgs.msg import Image, Joy
@@ -28,6 +29,9 @@ class Camera_Viewer(Node):
         # Create a client and sub for getting sensitivity
         self.first_sense_request = self.create_client(Trigger, "first_sensitivity")
         self.sensitivity_sub = self.create_subscription(Sensitivity, "sensitivity", self.sensitivity_callback, 10)
+        self.outer_temp_sub = self.create_subscription(Float32, "outer_thermometer", self.empty_callback, 10)
+        self.inner_temp_sub = self.create_subscription(Float32, "inner_thermometer", self.empty_callback, 10)
+        self.depth_sub = self.create_subscription(Float32, "depth_sensor", self.empty_callback, 10)
 
         # Create a service for adjusting thruster status
         self.thruster_status_srv = self.create_service(SetBool, 'thruster_status', self.thruster_status_callback)
@@ -120,6 +124,8 @@ class Camera_Viewer(Node):
         self.index = cam_msg.index
         self.gripper = cam_msg.gripper
 
+    def empty_callback(self, data):
+        pass
 
     # Sets the thrusters_enabled variable to match thruster status
     def thruster_status_callback(self, request, response):
