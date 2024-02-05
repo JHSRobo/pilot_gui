@@ -18,17 +18,8 @@ class Camera_Viewer(Node):
         
         self.log = self.get_logger() # Quick reference for ROS logging
 
-        self.vid_capture = cv2.VideoCapture("udp://192.168.1.100:5000/1") # Variable for storing connection to camera stream
-        
-        # Create window used for displaying camera feed
-        cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+        self.vid_capture = None # Variable for storing connection to camera stream
 
-        # Create Framerate and callback timer
-        framerate = 1.0 / 1000.0
-        self.create_timer(framerate, self.display_camera)
-
-        """
         # Create subsciber for changing cameras
         self.camera_sub = self.create_subscription(Cam, "active_camera", self.change_camera_callback, 10)
 
@@ -53,9 +44,11 @@ class Camera_Viewer(Node):
 
         # Create a joystick subscriber for toggling recording
         self.joy_sub = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
-        """
 
-        """
+        # Create window used for displaying camera feed
+        cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
+        cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+
         # Create variables for keeping track of ROV Data
         self.nickname = None
         self.index = 0
@@ -66,12 +59,14 @@ class Camera_Viewer(Node):
 
         self.publish_img = False
         
-        
         # Create your HUD editor
-        resolution = (1600, 900)
+        resolution = (1440, 810)
         self.hud = camera_overlay.HUD(resolution)
         self.bridge = CvBridge()
-        """
+
+        # Create Framerate and callback timer
+        framerate = 1.0 / 50.0
+        self.create_timer(framerate, self.display_camera)
 
 
     # Grab the most recent frame from the camera feed
@@ -84,24 +79,20 @@ class Camera_Viewer(Node):
 
     # Display the most recent frame in our camera feed window
     def display_camera(self):
-        """
         if self.vid_capture is None:
             time.sleep(0.1)
             request = Trigger.Request()
             self.first_cam_request.call_async(request)
             self.first_sense_request.call_async(request)
             return
-        """
         
         frame = self.read_frame()
         if frame is None:
             return
         
-        """
         # Publish our image to camera feed if enabled
         if self.publish_img:
             self.broadcast_feed(frame)
-        
         
         # Add the overlay to the camera feed
         frame = self.hud.add_camera_details(frame, self.index, self.nickname)
@@ -110,12 +101,11 @@ class Camera_Viewer(Node):
         frame = self.hud.add_gripper(frame, self.gripper)
         frame = self.hud.add_publish_status(frame, self.publish_img)
         if self.leak_detected: frame - self.hud.leak_notification(frame)
-        """
 
         cv2.imshow("Camera Feed", frame)
         cv2.waitKey(1)
     
-    """
+
     # Publish our current camera feed frame to ROS topic
     def broadcast_feed(self, frame):
         img = Image()
@@ -169,7 +159,6 @@ class Camera_Viewer(Node):
             else: self.log.info("No longer publishing camera feed")
 
         self.cached_input = joy.buttons[2]
-    """
     
 
 def main(args=None):
