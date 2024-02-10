@@ -65,7 +65,7 @@ class Camera_Viewer(Node):
         self.bridge = CvBridge()
 
         # Create Framerate and callback timer
-        framerate = 1.0 / 50.0
+        framerate = 1.0 / 1000.0
         self.create_timer(framerate, self.display_camera)
 
 
