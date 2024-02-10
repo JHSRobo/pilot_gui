@@ -1,14 +1,8 @@
 {
   "1": {
-    "ip": "192.168.1.102",
+    "ip": "192.168.1.219",
     "gripper": "Front",
-    "nickname": "Testbench Cam",
-    "ID": "testbench_cam"
-  },
-  "2": {
-    "ip": "192.168.1.101",
-    "gripper": "Front",
-    "nickname": "Unnamed2",
-    "ID": "unnamed2"
+    "nickname": "Unnamed1",
+    "ID": "unnamed1"
   }
 }
