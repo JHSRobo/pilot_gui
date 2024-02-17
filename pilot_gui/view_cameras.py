@@ -119,7 +119,8 @@ class Camera_Viewer(Node):
         try: self.vid_capture.release()
         except: pass
 
-        self.vid_capture = cv2.VideoCapture("http://{}:5000/1".format(cam_msg.ip))
+        port = "5" + cam_msg.ip[10:]
+        self.vid_capture = cv2.VideoCapture("udp://192.168.1.100:{}".format(port))
         self.nickname = cam_msg.nickname
         self.index = cam_msg.index
         self.gripper = cam_msg.gripper
