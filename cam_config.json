@@ -1,12 +1,12 @@
 {
   "1": {
-    "ip": "192.168.1.165",
+    "ip": "192.168.1.207",
     "gripper": "Front",
     "nickname": "Unnamed1",
     "ID": "unnamed1"
   },
   "2": {
-    "ip": "192.168.1.207",
+    "ip": "192.168.1.165",
     "gripper": "Front",
     "nickname": "Unnamed2",
     "ID": "unnamed2"
