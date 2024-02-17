@@ -25,7 +25,7 @@ class Camera_Switcher(Node):
         super().__init__('camera_switcher')
 
         self.max_cameras = 8 # This is not a hard limit. Can change.
-        
+
         self.log = self.get_logger() # Quick reference for ROS logging
 
         # Stores IPs of active cameras
@@ -124,7 +124,7 @@ class Camera_Switcher(Node):
 
         change = False
 
-        if joy.axes[6] or joy.axes[7]:
+        if joy.buttons[4] or joy.buttons[5] or joy.buttons[6] or joy.buttons[7]:
             # Minor consequence of this logic is:
             # If multiple buttons are pressed, the furthest clockwise takes priority
             # No big deal tbh. About as reasonable a solution as any.
@@ -132,16 +132,16 @@ class Camera_Switcher(Node):
             desired_camera_index = False
 
             # Also, this cached input stuff is so that holding the button does not trigger this repeatedly.
-            if joy.axes[7] == 1.0 and not self.cached_button_input[0]: # Up button
+            if joy.buttons[4] and not self.cached_button_input[0]: # Up button
                 desired_camera_index = 1
                 change = True
-            if joy.axes[6] == -1.0 and not self.cached_button_input[1]: # Right Button
+            if joy.buttons[5] and not self.cached_button_input[1]: # Right Button
                 desired_camera_index = 2
                 change = True
-            if joy.axes[7] == -1.0 and not self.cached_button_input[2]: # Down button
+            if joy.buttons[6] and not self.cached_button_input[2]: # Down button
                 desired_camera_index = 3
                 change = True
-            if joy.axes[6] == 1.0 and not self.cached_button_input[3]: # Left Button
+            if joy.buttons[7] and not self.cached_button_input[3]: # Left Button
                 desired_camera_index = 4
                 change = True
 
@@ -162,7 +162,7 @@ class Camera_Switcher(Node):
                 else: # If there is no entry in the config file for this index:
                     self.log.warn("No camera mapped to that button")
             
-        self.cached_button_input = [joy.axes[7], joy.axes[6], joy.axes[7], joy.axes[6]]
+        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7]]
         self.cached_camera_index = self.current_camera_index
 
 
