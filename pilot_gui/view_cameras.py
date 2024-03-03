@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from core.msg import Cam, Sensitivity
-from std_msgs.msg import Float32
+from core.msg import Cam, Sensitivity, RectDimensions
+from std_msgs.msg import Float32, Bool
 from std_srvs.srv import Trigger, SetBool
 from core_lib import camera_overlay
 from sensor_msgs.msg import Image, Joy
@@ -43,7 +43,14 @@ class Camera_Viewer(Node):
         self.image_pub = self.create_publisher(Image, 'camera_feed', 10)
 
         # Create a joystick subscriber for toggling recording
-        self.joy_sub = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
+        self.joy_sub = self.create_subscription(Joy, 'joy', self.empty_callback, 10)
+
+        # Create a subscriber to receive parameters for bounding box (autonomous movement task)
+        self.msg = RectDimensions()
+        self.last_msg_time = self.get_clock().now().nanoseconds
+        self.red_sub = self.create_subscription(RectDimensions, 'parameters', self.red_callback, 10)
+        self.timer_duration_ns = 2e9 # 2 seconds
+        self.previous_timer = self.create_timer(0.1, self.previous_timer_callback)
 
         # Create window used for displaying camera feed
         cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
@@ -68,6 +75,16 @@ class Camera_Viewer(Node):
         framerate = 1.0 / 50.0
         self.create_timer(framerate, self.display_camera)
 
+    def red_callback(self, msg):
+        self.msg = msg
+        self.last_msg_time = self.get_clock().now().nanoseconds
+
+    def previous_timer_callback(self):
+        current_time = self.get_clock().now().nanoseconds
+        time_elapsed = current_time - self.last_msg_time
+
+        if time_elapsed > self.timer_duration_ns:
+            self.msg = RectDimensions()
 
     # Grab the most recent frame from the camera feed
     def read_frame(self):
@@ -90,6 +107,10 @@ class Camera_Viewer(Node):
         if frame is None:
             return
         
+        # Clear frame
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+        frame[:, :, 3] = 0
+
         # Publish our image to camera feed if enabled
         if self.publish_img:
             self.broadcast_feed(frame)
@@ -100,11 +121,17 @@ class Camera_Viewer(Node):
         frame = self.hud.add_sensitivity(frame, self.sensitivity)
         frame = self.hud.add_gripper(frame, self.gripper)
         frame = self.hud.add_publish_status(frame, self.publish_img)
+
+        if self.msg is not None and self.msg.x != 0 and self.msg.y != 0 and self.msg.w != 0 and self.msg.h != 0:
+           frame = cv2.rectangle(frame, (self.msg.x, self.msg.y), (self.msg.x + self.msg.w, self.msg.y + self.msg.h), (0, 255, 0), 2)
+           cv2.putText(frame, "Target Area, " + str(self.msg.x) + ", " + str(self.msg.y), (self.msg.x, self.msg.y), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0))
+        else:
+            frame = cv2.putText(frame, "No Target Area", (10, 790), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+        
         if self.leak_detected: frame - self.hud.leak_notification(frame)
 
         cv2.imshow("Camera Feed", frame)
         cv2.waitKey(1)
-    
 
     # Publish our current camera feed frame to ROS topic
     def broadcast_feed(self, frame):
@@ -119,8 +146,7 @@ class Camera_Viewer(Node):
         try: self.vid_capture.release()
         except: pass
 
-        port = "5" + cam_msg.ip[10:]
-        self.vid_capture = cv2.VideoCapture("udp://192.168.1.100:{}".format(port))
+        self.vid_capture = cv2.VideoCapture("http://{}:5000".format(cam_msg.ip))
         self.nickname = cam_msg.nickname
         self.index = cam_msg.index
         self.gripper = cam_msg.gripper
@@ -148,8 +174,7 @@ class Camera_Viewer(Node):
         self.leak_detected = request.data
         response.success = True
         return response
-
-
+    
     # Checks to see if we are broadcasting to topic or not
     def joy_callback(self, joy):
 
