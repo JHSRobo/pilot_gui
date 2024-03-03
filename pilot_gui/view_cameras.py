@@ -64,7 +64,7 @@ class Camera_Viewer(Node):
         self.leak_detected = False
         self.gripper = None
 
-        self.publish_img = True
+        self.publish_img = False
         
         # Create your HUD editor
         resolution = (1440, 810)
@@ -72,7 +72,7 @@ class Camera_Viewer(Node):
         self.bridge = CvBridge()
 
         # Create Framerate and callback timer
-        framerate = 1.0 / 1000.0
+        framerate = 1.0 / 50.0
         self.create_timer(framerate, self.display_camera)
 
     def red_callback(self, msg):
@@ -174,6 +174,17 @@ class Camera_Viewer(Node):
         self.leak_detected = request.data
         response.success = True
         return response
+    
+    # Checks to see if we are broadcasting to topic or not
+    def joy_callback(self, joy):
+
+        # Enable or disable thrusters based on button press
+        if joy.buttons[2] and not self.cached_input:
+            self.publish_img = not self.publish_img
+            if self.publish_img: self.log.info("Starting to publish camera feed")
+            else: self.log.info("No longer publishing camera feed")
+
+        self.cached_input = joy.buttons[2]
     
 
 def main(args=None):
