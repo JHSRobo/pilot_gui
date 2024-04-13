@@ -118,7 +118,7 @@ class Camera_Viewer(Node):
     def change_camera_callback(self, cam_msg=Cam):
         try: self.vid_capture.release()
         except: pass
-
+        
         self.vid_capture = cv2.VideoCapture("http://{}:5000".format(cam_msg.ip))
         self.nickname = cam_msg.nickname
         self.index = cam_msg.index
