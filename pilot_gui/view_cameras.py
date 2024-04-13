@@ -65,7 +65,7 @@ class Camera_Viewer(Node):
         self.bridge = CvBridge()
 
         # Create Framerate and callback timer
-        framerate = 1.0 / 50.0
+        framerate = 1.0 / 1000.0
         self.create_timer(framerate, self.display_camera)
 
 
@@ -118,9 +118,8 @@ class Camera_Viewer(Node):
     def change_camera_callback(self, cam_msg=Cam):
         try: self.vid_capture.release()
         except: pass
-
-        port = "5" + cam_msg.ip[10:]
-        self.vid_capture = cv2.VideoCapture("udp://192.168.1.100:{}".format(port))
+        
+        self.vid_capture = cv2.VideoCapture("http://{}:5000".format(cam_msg.ip))
         self.nickname = cam_msg.nickname
         self.index = cam_msg.index
         self.gripper = cam_msg.gripper
