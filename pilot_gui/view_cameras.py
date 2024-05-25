@@ -126,7 +126,7 @@ class Camera_Viewer(Node):
            frame = cv2.rectangle(frame, (self.msg.x, self.msg.y), (self.msg.x + self.msg.w, self.msg.y + self.msg.h), (0, 255, 0), 2)
            cv2.putText(frame, "Target Area, " + str(self.msg.x) + ", " + str(self.msg.y), (self.msg.x, self.msg.y), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0))
         else:
-            frame = cv2.putText(frame, "No Target Area", (10, 790), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+            frame = cv2.putText(frame, "No Target Area", (10, 910), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
         
         if self.leak_detected: frame - self.hud.leak_notification(frame)
 
