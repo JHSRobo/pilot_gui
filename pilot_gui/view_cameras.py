@@ -9,7 +9,7 @@ from cv_bridge import CvBridge
 
 import time
 import cv2
-
+import os
 
 class Camera_Viewer(Node):
 
@@ -70,6 +70,7 @@ class Camera_Viewer(Node):
 
         # Photogrammetry Coral Count
         self.coral_count += 1
+        os.system("rm -f /jhsrobo/img_capture/*")
 
 
     # Grab the most recent frame from the camera feed
