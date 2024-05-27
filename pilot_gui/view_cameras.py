@@ -68,6 +68,9 @@ class Camera_Viewer(Node):
         framerate = 1.0 / 1000.0
         self.create_timer(framerate, self.display_camera)
 
+        # Photogrammetry Coral Count
+        self.coral_count += 1
+
 
     # Grab the most recent frame from the camera feed
     def read_frame(self):
@@ -110,7 +113,9 @@ class Camera_Viewer(Node):
     def broadcast_feed(self, frame):
         img = Image()
         img = self.bridge.cv2_to_imgmsg(frame, encoding="passthrough")
-        self.image_pub.publish(img)
+        cv2.imwrite("/jhsrobo/img_capture/{}.png".format(self.coral_count), img)
+        self.coral_count += 1
+        #self.image_pub.publish(img)
 
 
     # Switches the captured video feed whenever we change cameras.
