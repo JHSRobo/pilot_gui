@@ -68,10 +68,6 @@ class Camera_Viewer(Node):
         framerate = 1.0 / 1000.0
         self.create_timer(framerate, self.display_camera)
 
-        # Photogrammetry Coral Count
-        self.coral_count += 1
-        os.system("rm -f /jhsrobo/img_capture/*")
-
 
     # Grab the most recent frame from the camera feed
     def read_frame(self):
@@ -112,11 +108,8 @@ class Camera_Viewer(Node):
 
     # Publish our current camera feed frame to ROS topic
     def broadcast_feed(self, frame):
-        img = Image()
         img = self.bridge.cv2_to_imgmsg(frame, encoding="passthrough")
-        cv2.imwrite("/jhsrobo/img_capture/{}.png".format(self.coral_count), img)
-        self.coral_count += 1
-        #self.image_pub.publish(img)
+        self.image_pub.publish(img)
 
 
     # Switches the captured video feed whenever we change cameras.

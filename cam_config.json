@@ -1,0 +1,20 @@
+{
+  "3": {
+    "ip": "192.168.1.99",
+    "gripper": "Front",
+    "nickname": "Valve",
+    "ID": "valve"
+  },
+  "2": {
+    "ip": "192.168.1.109",
+    "gripper": "Bottom",
+    "nickname": "Bottom",
+    "ID": "bottom"
+  },
+  "1": {
+    "ip": "192.168.1.151",
+    "gripper": "Front",
+    "nickname": "MEH",
+    "ID": "meh"
+  }
+}
