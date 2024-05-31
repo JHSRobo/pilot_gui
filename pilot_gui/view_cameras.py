@@ -9,7 +9,6 @@ from cv_bridge import CvBridge
 
 import time
 import cv2
-import os
 
 class Camera_Viewer(Node):
 
@@ -95,12 +94,13 @@ class Camera_Viewer(Node):
             self.broadcast_feed(frame)
         
         # Add the overlay to the camera feed
+        if self.publish_img: frame = self.hud.add_photogrammetry_box(frame)
         frame = self.hud.add_camera_details(frame, self.index, self.nickname)
         frame = self.hud.add_thruster_status(frame, self.thrusters_enabled)
         frame = self.hud.add_sensitivity(frame, self.sensitivity)
         frame = self.hud.add_gripper(frame, self.gripper)
         frame = self.hud.add_publish_status(frame, self.publish_img)
-        if self.leak_detected: frame - self.hud.leak_notification(frame)
+        if self.leak_detected: frame = self.hud.leak_notification(frame)
 
         cv2.imshow("Camera Feed", frame)
         cv2.waitKey(1)
