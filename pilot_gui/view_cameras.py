@@ -1,177 +1,177 @@
 import rclpy
-from rclpy.node import Node
-from core.msg import Cam, Sensitivity
-from std_msgs.msg import Float32
-from std_srvs.srv import Trigger, SetBool
-from core_lib import camera_overlay
+from rclpy.node import Node 
 from sensor_msgs.msg import Image, Joy
-from cv_bridge import CvBridge
-
+import cv2 
+from cv_bridge import CvBridge 
+from sensor_msgs.msg import Image, Joy
+from std_srvs.srv import SetBool
+from core.msg import Sensitivity, Cam
+from core_lib import camera_overlay
 import time
-import cv2
+import toml
 
-class Camera_Viewer(Node):
-
+# w W
+class CameraViewer(Node):
     def __init__(self):
         super().__init__('camera_viewer')
-        
-        self.log = self.get_logger() # Quick reference for ROS logging
 
-        self.vid_capture = None # Variable for storing connection to camera stream
+        self.log = self.get_logger()
 
-        # Create subsciber for changing cameras
-        self.camera_sub = self.create_subscription(Cam, "active_camera", self.change_camera_callback, 10)
+        # Getting known information from the config file in the config dictionary and storing currently available cameras in the cameras dictionary
+        with open("/home/jhsrobo/corews/src/pilot_gui/cam_config.toml", "r") as f:
+            self.config = toml.load(f)
+        self.cameras = {}
+        self.cur_cam = "1"
+        self.cached_cam = None
 
-        # Create client for adding the first camera
-        self.first_cam_request = self.create_client(Trigger, "first_camera")
+        # Time for cameras to turn on 
+        time.sleep(1)
 
-        # Create a client and sub for getting sensitivity
-        self.first_sense_request = self.create_client(Trigger, "first_sensitivity")
+        # Look at all ros topics on the network
+        for topic, topic_type in self.get_topic_names_and_types():
+            # If the topic is a camera, take note of the ip. If that ip is in the config, use the config data
+            # when displaying the camera. Otherwise, use some of the defaults.
+            if "camera" in topic:
+                index = get_index(topic) # returns - 1 if the camera is not already in the config
+                if index == -1:
+                    cam_dict = {}
+                    cam_dict["ip"] = "192.168.1." + topic.replace("camera", "")
+                    cam_dict["gripper"] = "Front"
+                    cam_dict["nickname"] = "Unnamed"
+                    cam_dict["topic"] = topic
+                    self.config[str(len(config) + 1)] = cam_dict
+                    self.cameras[str(len(cameras) + 1)] = cam_dict
+                else: 
+                    self.cameras[str(len(cameras) + 1)] = config[index]
+
+        # If no cameras are found, end the program. Otherwise, continue.
+        if len(self.cameras.keys()) == 0:
+            self.log.info("No Cameras Found")
+            exit()
+
+        # Defaults to viewing the camera feed at index 1 
+        self.cam_sub = self.create_subscription(Image, self.cameras[self.cur_cam]["topic"], self.image_callback, 10)
+
+        # Sub to joy for camera changes
+        self.joy_sub = self.create_subscription(Joy, "joy", self.change_camera_callback, 10)
+        self.cached_button_input = [0, 0, 0, 0]
+
+        # Various hud information subscribers
         self.sensitivity_sub = self.create_subscription(Sensitivity, "sensitivity", self.sensitivity_callback, 10)
-        self.outer_temp_sub = self.create_subscription(Float32, "outer_thermometer", self.empty_callback, 10)
-        self.inner_temp_sub = self.create_subscription(Float32, "inner_thermometer", self.empty_callback, 10)
-        self.depth_sub = self.create_subscription(Float32, "depth_sensor", self.empty_callback, 10)
+        self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None, "Slow Factor": None}
 
-        # Create a service for adjusting thruster status
-        self.thruster_status_srv = self.create_service(SetBool, 'thruster_status', self.thruster_status_callback)
+        self.thruster_status_strv = self.create_service(SetBool, 'thruster_status', self.thruster_status_callback)
+        self.thrusters_enabled = False
 
-        # Create a service for reporting leak detection
         self.leak_detect_srv = self.create_service(SetBool, "leak_detection", self.leak_detection_callback)
+        self.leak_detected = False
 
-        # Create a publisher for publishing the active feed
-        self.image_pub = self.create_publisher(Image, 'camera_feed', 10)
-
-        # Create a joystick subscriber for toggling recording
-        self.joy_sub = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
-
-        # Create window used for displaying camera feed
+        # Camera Data Publisher (primarily so that grippers know what gripper to use)
+        self.camera_pub(Cam, "active_camera", 10) 
+        self.camera_pub.publish(self.create_camera_msg())
+        
+        # Create camera feed window
         cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
-        # Create variables for keeping track of ROV Data
-        self.nickname = None
-        self.index = 0
-        self.thrusters_enabled = False
-        self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None, "Slow Factor": None}
-        self.leak_detected = False
-        self.gripper = None
-
-        self.publish_img = False
-        
         # Create your HUD editor
         resolution = (1440, 810)
         self.hud = camera_overlay.HUD(resolution)
         self.bridge = CvBridge()
 
-        # Create Framerate and callback timer
-        framerate = 1.0 / 1000.0
-        self.create_timer(framerate, self.display_camera)
-
-
-    # Grab the most recent frame from the camera feed
-    def read_frame(self):
-        success, frame = self.vid_capture.read()
-        if not success:
-            return None
-        else: return frame
-
-
-    # Display the most recent frame in our camera feed window
-    def display_camera(self):
-        if self.vid_capture is None:
-            time.sleep(0.1)
-            request = Trigger.Request()
-            self.first_cam_request.call_async(request)
-            self.first_sense_request.call_async(request)
-            return
-        
-        frame = self.read_frame()
-        if frame is None:
-            return
-        
-        # Publish our image to camera feed if enabled
-        if self.publish_img:
-            self.broadcast_feed(frame)
-        
-        # Add the overlay to the camera feed
-        if self.publish_img: frame = self.hud.add_photogrammetry_box(frame)
-        frame = self.hud.add_camera_details(frame, self.index, self.nickname)
+    def image_callback(self, frame):
+        # Overlay the HUD
+        frame = self.bridge.imgmsg_to_cv2(frame, desired_encoding="passthrough")
+        frame = self.hud.add_camera_details(frame, self.cur_cam, self.cameras[self.cur_cam]["nickname"])
         frame = self.hud.add_thruster_status(frame, self.thrusters_enabled)
-        frame = self.hud.add_sensitivity(frame, self.sensitivity)
-        frame = self.hud.add_gripper(frame, self.gripper)
-        frame = self.hud.add_publish_status(frame, self.publish_img)
-        if self.leak_detected: frame = self.hud.leak_notification(frame)
+        frame = self.hud.add_sensitivity(frame, self.sensitivity) 
+        frame = self.hud.add_gripper(frame, self.cameras[self.cur_cam]["gripper"])
+        if self.leak_detected: frame = self.hud.leak_notification(frame) 
 
+        # Display the Actual Frame
         cv2.imshow("Camera Feed", frame)
         cv2.waitKey(1)
-    
 
-    # Publish our current camera feed frame to ROS topic
-    def broadcast_feed(self, frame):
-        img = self.bridge.cv2_to_imgmsg(frame, encoding="passthrough")
-        self.image_pub.publish(img)
+    def change_camera_callback(self, joy):
+        change = False 
 
+        if joy.buttons[4] or joy.buttons[5] or joy.buttons[6] or joy.buttons[7]:
+            # Minor consequence of this logic is:
+            # If multiple buttons are pressed, the furthest clockwise takes priority
+            # No big deal tbh. About as reasonable a solution as any.
+            
+            desired_camera_index = -1
 
-    # Switches the captured video feed whenever we change cameras.
-    # Also updates with most recent camera data.
-    def change_camera_callback(self, cam_msg=Cam):
-        try: self.vid_capture.release()
-        except: pass
-        
-        self.vid_capture = cv2.VideoCapture("http://{}:5000".format(cam_msg.ip))
-        self.nickname = cam_msg.nickname
-        self.index = cam_msg.index
-        self.gripper = cam_msg.gripper
+            # Also, this cached input stuff is so that holding the button does not trigger this repeatedly.
+            if joy.buttons[4] and not self.cached_button_input[0]: # Up button
+                desired_camera_index = 1
+                change = True
+            if joy.buttons[5] and not self.cached_button_input[1]: # Right Button
+                desired_camera_index = 2
+                change = True
+            if joy.buttons[6] and not self.cached_button_input[2]: # Down button
+                desired_camera_index = 3
+                change = True
+            if joy.buttons[7] and not self.cached_button_input[3]: # Left Button
+                desired_camera_index = 4
+                change = True
 
-    def empty_callback(self, data):
-        pass
+            if change:
+                if str(desired_camera_index) in self.cameras.keys():
+                    if self.cached_cam is not desired_camera_index:
+                        self.cur_cam = str(desired_camera_index)
 
-    # Sets the thrusters_enabled variable to match thruster status
-    def thruster_status_callback(self, request, response):
-        self.thrusters_enabled = request.data
-        response.success = True
-        return response
-    
+                        self.destroy_subscription(self.cam_sub)
+                        self.cam_sub = self.create_subscription(Image, self.cameras[self.cur_cam]["topic"], self.image_callback, 10)
 
-    # Updates the sensetivity values to be displayed
+                        camera_msg = self.create_camera_msg()
+                        self.camera_pub.publish(camera_msg)
+                else:
+                    self.log.warn("No camera mapped to that button")
+
+        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7]]
+        self.cached_cam = self.cur_cam
+
     def sensitivity_callback(self, sensitivity_data):
-        # Rounding to deal with some floating point imprecision
         self.sensitivity["Horizontal"] = round(sensitivity_data.horizontal, 2)
         self.sensitivity["Vertical"] = round(sensitivity_data.vertical, 2)
         self.sensitivity["Angular"] = round(sensitivity_data.angular, 2)
         self.sensitivity["Slow Factor"] = round(sensitivity_data.slow_factor, 2)
 
-    # Updates leak detection status
-    def leak_detection_callback(self, request, response):
-        self.leak_detected = request.data
-        response.success = True
+    def thruster_status_callback(self, request, response):
+        self.thrusters_enabled = request.data 
+        response.success = True 
         return response
 
+    def leak_detection_callback(self, request, response): 
+        self.leak_detected = request.data 
+        response.success = True 
+        return response 
 
-    # Checks to see if we are broadcasting to topic or not
-    def joy_callback(self, joy):
+    def get_index(self, val):
+        # Returns the index of the first camera with an attribute equal to val
+        for cam in cameras:
+            for key in cam.keys():
+                if cam[key] == val:
+                    return cam
+        return -1
 
-        # Enable or disable thrusters based on button press
-        if joy.buttons[2] and not self.cached_input:
-            self.publish_img = not self.publish_img
-            if self.publish_img: self.log.info("Starting to publish camera feed")
-            else: self.log.info("No longer publishing camera feed")
-
-        self.cached_input = joy.buttons[2]
-    
+    def create_camera_msg(self):
+        # Creates the current camera msg
+        camera_msg = Cam()
+        camera_msg.index = int(self.cur_cam)
+        camera_msg.ip = self.cameras[self.cur_cam]["ip"]
+        camera_msg.topic = self.cameras[self.cur_cam]["topic"]
+        camera_msg.gripper = self.cameras[self.cur_cam]["gripper"]
+        camera_msg.nickname = self.cameras[self.cur_cam]["nickname"]
+        return camera_msg
 
 def main(args=None):
     rclpy.init(args=args)
-
-    camera_viewer = Camera_Viewer()
-
-    # Runs the program until shutdown is recieved
-    rclpy.spin(camera_viewer)
-
-    # On shutdown, kill node
-    camera_viewer.destroy_node()
+    camera_viewer_node = CameraViewer()
+    rclpy.spin(camera_viewer_node)
+    camera_viewer_node.destroy_node()
     rclpy.shutdown()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

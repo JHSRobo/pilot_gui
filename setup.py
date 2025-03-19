@@ -14,16 +14,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='jhsrobo',
-    maintainer_email='jammerand14@gmail.com',
+    maintainer_email='jackdfrings@protonmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'find_cameras = pilot_gui.find_cameras:main',
-            'switch_cameras = pilot_gui.switch_cameras:main',
-            'view_cameras = pilot_gui.view_cameras:main',
-            'record_feed = pilot_gui.record_feed:main'
+            "view_cameras=pilot_gui.view_cameras:main"
         ],
     },
 )
