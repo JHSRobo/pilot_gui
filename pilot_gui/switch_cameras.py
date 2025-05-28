@@ -39,7 +39,7 @@ class Camera_Switcher(Node):
         # For remembering previous camera button presses
         # This way we only try to change when the button is first pushed
         # And not repeatedly when it is held down
-        self.cached_button_input = [0, 0, 0, 0]
+        self.cached_button_input = [0, 0, 0, 0, 0]
         self.cached_camera_index = None
 
         # Define config file path
@@ -58,31 +58,7 @@ class Camera_Switcher(Node):
         self.joy_sub = self.create_subscription(Joy, 'joy', self.change_cam_callback, 10)
         self.camera_pub = self.create_publisher(Cam, "active_camera", 10)
 
-        self.declare_parameter('save_changes_on_shutdown', False)
-        self.add_on_set_parameters_callback(self.parameters_callback)
 
-
-    # Edit the camera config according to parameters
-    # Get the name of the camera that was changed
-    # Copy the entry from the intial_camera_config to the new assigned index
-    # The entry is written to the new index in camera_config
-    # And changes are written permanently depending on parameter
-    def parameters_callback(self, params):
-        for param in params:
-            # List of parameters to ignore in this function
-            if param.name not in ["use_sim_time", "permanent_changes", "save_changes_on_shutdown"]:
-                new_index = param.value
-                ID = param.name.replace('_index', '') # Get ID from parameter name
-                master_index = int(self.get_master_index(ID))
-                nickname = self.master_config[str(master_index)]["nickname"]
-
-                # Update the config and the active cameras list
-                self.delete_camera_entries(nickname)
-                self.std_camera_config[str(new_index)] = self.master_config[str(master_index)]
-
-                self.log_camera_assignment_change(nickname, new_index)
-
-        return SetParametersResult(successful=True)
 
 
     # When the AddCamera service is requested (from find_cameras.py), 
@@ -98,7 +74,6 @@ class Camera_Switcher(Node):
             ip_index = self.get_std_index(request.ip) # Get new index once it's been added to config
 
         self.active_cameras.append(request.ip)
-        self.new_cam_parameter(ip_index)
 
         return response
 
@@ -124,7 +99,7 @@ class Camera_Switcher(Node):
 
         change = False
 
-        if joy.buttons[4] or joy.buttons[5] or joy.buttons[6] or joy.buttons[7]:
+        if joy.buttons[4] or joy.buttons[5] or joy.buttons[6] or joy.buttons[7] or joy.buttons[8]:
             # Minor consequence of this logic is:
             # If multiple buttons are pressed, the furthest clockwise takes priority
             # No big deal tbh. About as reasonable a solution as any.
@@ -144,6 +119,9 @@ class Camera_Switcher(Node):
             if joy.buttons[7] and not self.cached_button_input[3]: # Left Button
                 desired_camera_index = 4
                 change = True
+            if joy.buttons[8] and not self.cached_button_input[4]:
+                desired_camera_index = 5 
+                change = True 
 
             # If a button state has changed...
             if change: 
@@ -162,7 +140,7 @@ class Camera_Switcher(Node):
                 else: # If there is no entry in the config file for this index:
                     self.log.warn("No camera mapped to that button")
             
-        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7]]
+        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7], joy.buttons[8]]
         self.cached_camera_index = self.current_camera_index
 
 
@@ -178,21 +156,6 @@ class Camera_Switcher(Node):
         self.log.info("{} camera assigned to index {}".format(nickname, new_index))
         self.log.info("Assigned Camera List: {}".format(self.get_nickname_printout()))
 
-
-    # Creates a new parameter for a camera
-    def new_cam_parameter(self, index):
-
-        # Define the parameter settings
-        int_range = IntegerRange()
-        int_range.from_value = 1
-        int_range.to_value = self.max_cameras
-        int_range.step = 1
-        ID = self.std_camera_config[index]["ID"]
-        param_name = '{}_index'.format(ID)
-
-        descriptor = ParameterDescriptor(integer_range = [int_range])
-
-        self.declare_parameter(param_name, int(index), descriptor)
 
 
     # Populate a camera msg with all of the info about the current camera
@@ -304,7 +267,7 @@ class Camera_Switcher(Node):
 
         self.write_to_config()
         self.log.info("")
-        self.log.info("Created new camera config entry")
+        self.log.info("Added new camera: " + nickname)
 
 
     # Updates the contents of the config file with the contents of self.std_camera_config
@@ -319,10 +282,6 @@ class Camera_Switcher(Node):
         with open(self.config_path, "w") as f:
             f.write(config_json)
 
-    # Simple getter to run at shutdown
-    def get_save_changes (self):
-        return self.get_parameter("save_changes_on_shutdown").value
-    
 
     def delete_camera_entries(self, nickname):
         target_index = self.get_std_index(nickname)
@@ -337,10 +296,7 @@ def main(args=None):
     camera_switcher = Camera_Switcher()
 
     # Runs the program until shutdown is recieved
-    try: rclpy.spin(camera_switcher)
-    except KeyboardInterrupt:
-        save_changes = camera_switcher.get_save_changes()
-        camera_switcher.write_to_config(save_changes)
+    rclpy.spin(camera_switcher)
 
     # On shutdown, kill node
     camera_switcher.destroy_node()
