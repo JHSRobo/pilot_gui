@@ -93,7 +93,7 @@ class Camera_Viewer(Node):
             if self.camera_count != len(self.config):
                 self.config = {}
                 for i in range(self.camera_count):
-                    self.config[str(i+1)] = {'port': 5000 + i, 'nickname': f'Unnamed{i+1}', 'gripper': 'Front'}
+                    self.config[str(i+1)] = {'port': 5000 + i, 'nickname': f'Unnamed{i+1}', 'gripper': 'Front', 'vertical-flip': False}
                     self.log.info(str(self.config))
 
             self.compared_to_config = True 
@@ -107,6 +107,9 @@ class Camera_Viewer(Node):
             frame = self.read_frame()
             if frame is None:
                 return
+
+            if self.config[self.cur_cam]['vertical-flip']:
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
             
             # Add the overlay to the camera feed
             frame = self.hud.add_camera_details(frame, self.cur_cam, self.config[self.cur_cam]['nickname'])
