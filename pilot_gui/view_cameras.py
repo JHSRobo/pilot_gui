@@ -43,9 +43,10 @@ class Camera_Viewer(Node):
         cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
+        self.config_path = "/home/jhsrobo/corews/src/pilot_gui/cam_config.toml"
         # Open Config File for Cameras
         try:
-            with open("/home/jhsrobo/corews/src/pilot_gui/cam_config.toml", "r") as f:
+            with open(self.config_path, "r") as f:
                 self.config = toml.load(f)
                 self.log.info(str(self.config))
 
@@ -124,7 +125,7 @@ class Camera_Viewer(Node):
 
         self.log.info(f"Changing Camera to {self.cur_cam}")
         
-        self.vid_capture = cv2.VideoCapture(f"http://192.168.88.89:{self.config[self.cur_cam]["port"]}/stream")
+        self.vid_capture = cv2.VideoCapture(f"http://192.168.88.86:{self.config[self.cur_cam]["port"]}/stream")
         
         msg = Cam()
         msg.port = self.config[self.cur_cam]["port"]
@@ -189,13 +190,18 @@ class Camera_Viewer(Node):
             
         self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7], joy.buttons[8]]
 
+    def write_to_config(self):
+        with open(self.config_path, "w") as f:
+            toml.dump(self.config, f)
+
 def main(args=None):
     rclpy.init(args=args)
 
     camera_viewer = Camera_Viewer()
 
     # Runs the program until shutdown is recieved
-    rclpy.spin(camera_viewer)
+    try: rclpy.spin(camera_viewer)
+    except KeyboardInterrupt: camera_viewer.write_to_config()
 
     # On shutdown, kill node
     camera_viewer.destroy_node()
