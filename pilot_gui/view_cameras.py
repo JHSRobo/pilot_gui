@@ -175,7 +175,7 @@ class Camera_Viewer(Node):
         change = False
     
         # Crab AI toggle
-        if (int(joy.axes[6]) == -1) and not self.cached_button_input[5]:
+        if joy.buttons[2] and not self.cached_button_input[5]:
             if self.crab:
                 self.log.info("Crabs disabled")
             else:
@@ -236,7 +236,7 @@ class Camera_Viewer(Node):
                 else: # If there is no entry in the config file for this index:
                     self.log.warn("No camera mapped to that button")
             
-        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7], joy.buttons[8], joy.axes[6]]
+        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7], joy.buttons[8], joy.buttons[2]]
 
     def write_to_config(self):
         with open(self.config_path, "w") as f:
