@@ -32,7 +32,7 @@ class Camera_Viewer(Node):
         self.joy_sub = self.create_subscription(Joy, 'joy', self.joy_callback, 10)
 
         # Last frame's buttons pressed
-        self.cached_button_input = [0, 0, 0, 0, 0]
+        self.cached_button_input = [0, 0, 0, 0, 0, 0]
 
         # Get the number of cameras to receive streams from 
         self.camera_count = -1
@@ -42,6 +42,10 @@ class Camera_Viewer(Node):
         # Create window used for displaying camera feed
         cv2.namedWindow("Camera Feed", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+        
+        # Create variables for crop status and dimensions
+        self.apply_crop = False
+        self.x1, self.y1, self.x1, self.y2 = 400, 400, 800, 800
 
         self.config_path = "/home/jhsrobo/corews/src/pilot_gui/cam_config.toml"
         # Open Config File for Cameras
@@ -57,7 +61,7 @@ class Camera_Viewer(Node):
 
         # # Create variables for keeping track of ROV Data
         self.thrusters_enabled = False
-        self.sensitivity = { "Horizontal": None, "Vertical": None, "Angular": None, "Slow Factor": None}
+        self.sensitivity = { "Horizontal": None, "Vertical": None, "Yaw": None, "Roll": None, "Pitch": None, "Slow Factor": None}
 
         # Create your HUD editor
         resolution = (1920, 1080)
@@ -67,6 +71,7 @@ class Camera_Viewer(Node):
         # Create Framerate and callback timer
         framerate = 0.001
         self.create_timer(framerate, self.display_camera)
+        self.crab = False
 
 
     def camera_count_callback(self, msg):
@@ -93,7 +98,7 @@ class Camera_Viewer(Node):
             if self.camera_count != len(self.config):
                 self.config = {}
                 for i in range(self.camera_count):
-                    self.config[str(i+1)] = {'port': 5000 + i, 'nickname': f'Unnamed{i+1}', 'gripper': 'Front', 'vertical-flip': False}
+                    self.config[str(i+1)] = {'port': 5000 + i, 'nickname': f'Unnamed{i+1}', 'gripper': 'Front', 'rotation': 0}
                     self.log.info(str(self.config))
 
             self.compared_to_config = True 
@@ -108,8 +113,19 @@ class Camera_Viewer(Node):
             if frame is None:
                 return
 
-            if self.config[self.cur_cam]['vertical-flip']:
+            if self.config[self.cur_cam]['rotation'] == 90:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            if self.config[self.cur_cam]['rotation'] == 180:
                 frame = cv2.rotate(frame, cv2.ROTATE_180)
+            if self.config[self.cur_cam]['rotation'] == 270:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+            if self.apply_crop:
+                frame = cv2.imread(frame)
+                frame = frame[self.y1:self.y2, self.x1:self.x2]
+
+            if self.crab:
+                frame = self.hud.crab_model(frame)
             
             # Add the overlay to the camera feed
             frame = self.hud.add_camera_details(frame, self.cur_cam, self.config[self.cur_cam]['nickname'])
@@ -128,7 +144,7 @@ class Camera_Viewer(Node):
 
         self.log.info(f"Changing Camera to {self.cur_cam}")
         
-        self.vid_capture = cv2.VideoCapture(f"http://192.168.88.86:{self.config[self.cur_cam]["port"]}/stream")
+        self.vid_capture = cv2.VideoCapture(f"http://192.168.88.111:{self.config[self.cur_cam]["port"]}/stream")
         
         msg = Cam()
         msg.port = self.config[self.cur_cam]["port"]
@@ -149,12 +165,23 @@ class Camera_Viewer(Node):
         # Rounding to deal with some floating point imprecision
         self.sensitivity["Horizontal"] = round(sensitivity_data.horizontal, 2)
         self.sensitivity["Vertical"] = round(sensitivity_data.vertical, 2)
-        self.sensitivity["Angular"] = round(sensitivity_data.angular, 2)
+        self.sensitivity["Yaw"] = round(sensitivity_data.yaw, 2)
+        self.sensitivity["Roll"] = round(sensitivity_data.roll, 2)
+        self.sensitivity["Pitch"] = round(sensitivity_data.pitch, 2)
         self.sensitivity["Slow Factor"] = round(sensitivity_data.slow_factor, 2)
 
     # Checks to see if we are broadcasting to topic or not
     def joy_callback(self, joy):
         change = False
+    
+        # Crab AI toggle
+        if (int(joy.axes[6]) == -1) and not self.cached_button_input[5]:
+            if self.crab:
+                self.log.info("Crabs disabled")
+            else:
+                self.log.info("Crabs enabled")
+            self.crab = not self.crab
+
 
         if joy.buttons[4] or joy.buttons[5] or joy.buttons[6] or joy.buttons[7] or joy.buttons[8]:
             # Minor consequence of this logic is:
@@ -164,21 +191,39 @@ class Camera_Viewer(Node):
             desired_camera_index = False
 
             # Also, this cached input stuff is so that holding the button does not trigger this repeatedly.
-            if joy.buttons[4] and not self.cached_button_input[0]: # Up button
-                desired_camera_index = "1"
-                change = True
-            if joy.buttons[5] and not self.cached_button_input[1]: # Right Button
-                desired_camera_index = "2"
-                change = True
-            if joy.buttons[6] and not self.cached_button_input[2]: # Down button
-                desired_camera_index = "3"
-                change = True
-            if joy.buttons[7] and not self.cached_button_input[3]: # Left Button
-                desired_camera_index = "4"
-                change = True
-            if joy.buttons[8] and not self.cached_button_input[4]:
-                desired_camera_index = "5"
-                change = True 
+            if joy.buttons[4]:
+                if joy.buttons[5] and not self.cached_button_input[1]: # Right Button
+                    desired_camera_index = "2"
+                    self.apply_crop = not self.apply_crop
+                    change = True
+                if joy.buttons[6] and not self.cached_button_input[2]: # Down button
+                    desired_camera_index = "3"
+                    self.apply_crop = not self.apply_crop
+                    change = True
+                if joy.buttons[7] and not self.cached_button_input[3]: # Left Button
+                    desired_camera_index = "4"
+                    self.apply_crop = not self.apply_crop
+                    change = True
+                if joy.buttons[8] and not self.cached_button_input[4]:
+                    desired_camera_index = "5"
+                    self.apply_crop = not self.apply_crop
+                    change = True 
+                if not self.cached_button_input[0]:
+                    desired_camera_index = "1"
+                    change = True
+            else:
+                if joy.buttons[5] and not self.cached_button_input[1]: # Right Button
+                    desired_camera_index = "2"
+                    change = True
+                if joy.buttons[6] and not self.cached_button_input[2]: # Down button
+                    desired_camera_index = "3"
+                    change = True
+                if joy.buttons[7] and not self.cached_button_input[3]: # Left Button
+                    desired_camera_index = "4"
+                    change = True
+                if joy.buttons[8] and not self.cached_button_input[4]:
+                    desired_camera_index = "5"
+                    change = True
 
             # If a button state has changed...
             if change: 
@@ -191,7 +236,7 @@ class Camera_Viewer(Node):
                 else: # If there is no entry in the config file for this index:
                     self.log.warn("No camera mapped to that button")
             
-        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7], joy.buttons[8]]
+        self.cached_button_input = [joy.buttons[4], joy.buttons[5], joy.buttons[6], joy.buttons[7], joy.buttons[8], joy.axes[6]]
 
     def write_to_config(self):
         with open(self.config_path, "w") as f:
