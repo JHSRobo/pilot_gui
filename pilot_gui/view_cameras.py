@@ -30,6 +30,9 @@ class Camera_Viewer(Node):
 
         self.cached_button_input = [0, 0, 0, 0, 0, 0]
 
+
+        self.cur_cam = "1" 
+
         self.camera_count = -1
         self.compared_to_config = False
         self.camera_count_subscriber = self.create_subscription(Int32, 'camera_count', self.camera_count_callback, 10)
@@ -38,7 +41,12 @@ class Camera_Viewer(Node):
         cv2.setWindowProperty("Camera Feed", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
         
         self.apply_crop = False
-        self.x1, self.y1, self.x2, self.y2 = 400, 400, 800, 800
+        self.x1, self.y1, self.x2, self.y2 = 420, 0, 1500, 1120
+
+        self.alignment_bar = False
+        self.declare_parameter('alignment_bar', self.alignment_bar)
+
+        self.add_on_set_parameters_callback(self.parameter_callback)
 
         self.config_path = "/home/jhsrobo/corews/src/pilot_gui/cam_config.toml"
         try:
@@ -59,6 +67,11 @@ class Camera_Viewer(Node):
         framerate = 0.001
         self.create_timer(framerate, self.display_camera)
         self.crab = False
+
+    def parameter_callback(self, params):
+        for param in params:
+            if param.name == 'alignment_bar':
+                self.alignment_bar = param.value
 
     def camera_count_callback(self, msg):
         if self.camera_count == -1:
@@ -111,6 +124,9 @@ class Camera_Viewer(Node):
             if self.crab:
                 frame = self.hud.crab_model(frame)
 
+            if self.alignment_bar:
+                frame = self.hud.add_horizontal_bar(frame)
+
             frame = self.hud.add_camera_details(frame, self.cur_cam, self.config[self.cur_cam]['nickname'])
             frame = self.hud.add_thruster_status(frame, self.thrusters_enabled)
             frame = self.hud.add_sensitivity(frame, self.sensitivity)
@@ -128,7 +144,7 @@ class Camera_Viewer(Node):
         self.log.info(f"Connecting to stream for camera {self.cur_cam}")
 
         time.sleep(0.3)
-        self.vid_capture = cv2.VideoCapture("http://192.168.88.99:5000/stream")
+        self.vid_capture = cv2.VideoCapture("http://192.168.88.111:5000/stream")
 
         msg = Cam()
         msg.nickname = self.config[self.cur_cam]["nickname"]
@@ -158,29 +174,22 @@ class Camera_Viewer(Node):
             self.crab = not self.crab
             self.log.info(f"Crabs {'enabled' if self.crab else 'disabled'}")
 
-        if b[4] or b[5] or b[6] or b[7] or b[8]:
+        if b[4] or b[5] or b[6] or b[7] or b[8] or b[9]:
             desired_camera = None
 
-            if b[4]:
-                if b[5] and not c[1]:
-                    desired_camera = "2"; self.apply_crop = not self.apply_crop; change = True
-                if b[6] and not c[2]:
-                    desired_camera = "3"; self.apply_crop = not self.apply_crop; change = True
-                if b[7] and not c[3]:
-                    desired_camera = "4"; self.apply_crop = not self.apply_crop; change = True
-                if b[8] and not c[4]:
-                    desired_camera = "5"; self.apply_crop = not self.apply_crop; change = True
-                if not c[0]:
-                    desired_camera = "1"; change = True
-            else:
-                if b[5] and not c[1]:
-                    desired_camera = "2"; change = True
-                if b[6] and not c[2]:
-                    desired_camera = "3"; change = True
-                if b[7] and not c[3]:
-                    desired_camera = "4"; change = True
-                if b[8] and not c[4]:
-                    desired_camera = "5"; change = True
+            if b[9] and not c[6]:
+                self.apply_crop = not self.apply_crop
+                self.log.info("Set crop variable")
+            if b[4] and not c[0]:
+                desired_camera = "1"; change = True
+            if b[5] and not c[1]:
+                desired_camera = "2"; change = True
+            if b[6] and not c[2]:
+                desired_camera = "3"; change = True
+            if b[7] and not c[3]:
+                desired_camera = "4"; change = True
+            if b[8] and not c[4]:
+                desired_camera = "5"; change = True
 
             if change:
                 if desired_camera in self.config:
@@ -190,7 +199,7 @@ class Camera_Viewer(Node):
                 else:
                     self.log.warn("No camera mapped to that button")
 
-        self.cached_button_input = [b[4], b[5], b[6], b[7], b[8], b[2]]
+        self.cached_button_input = [b[4], b[5], b[6], b[7], b[8], b[2], b[9]]
 
     def write_to_config(self):
         with open(self.config_path, "w") as f:
